@@ -7,7 +7,7 @@
 <style>
   :root { --bg: #f4f6f9; --card: #ffffff; --border: #d9dee7; --text: #1f2937; --muted: #6b7280; --accent: #2563eb; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --head: #eef2ff; }
   * { box-sizing: border-box; }
-  body { margin: 0; padding: 24px 16px 48px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+  body { margin: 0; padding: 24px 16px 48px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
   .wrap { max-width: 980px; margin: 0 auto; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
@@ -24,7 +24,7 @@
   .stat .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .stat .value.neg { color: var(--bad); }
   .stat .value.pos { color: var(--ok); }
-  
+
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
   thead th { text-align: left; padding: 10px 8px; background: var(--head); border-bottom: 2px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #374151; white-space: nowrap; }
   thead th.num, tbody td.num { text-align: right; }
@@ -32,17 +32,16 @@
   tbody tr:last-child td { border-bottom: none; }
   tbody tr:hover { background: #f8faff; }
   td input[type="number"] { padding: 6px 8px; min-width: 90px; }
-  
+
   .status { font-size: 13px; color: var(--muted); font-style: italic; }
   .balance-pos { color: var(--ok); font-weight: 600; }
   .balance-neg { color: var(--bad); font-weight: 600; }
   .balance-zero { color: var(--muted); font-weight: 600; }
-  
+
   .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
   button { font: inherit; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text); cursor: pointer; transition: all 0.2s; }
   button:hover { background: #f3f6ff; }
-  
-  /* Стили для круглых кнопок + и - */
+
   .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; border-radius: 50%; }
   .icon-btn.add { color: var(--ok); border-color: #cce5d1; background: #f0fdf4; margin-right: 10px; }
   .icon-btn.add:hover { background: #dcfce7; border-color: var(--ok); }
@@ -52,9 +51,85 @@
   button.danger { color: var(--bad); border-color: #f3c4c4; }
   button.danger:hover { background: #fff5f5; }
   .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-  @media (max-width: 640px) { thead th:nth-child(1), tbody td:nth-child(1) { min-width: 150px; } }
   #syncStatus { margin-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
   #syncStatus.error { color: var(--bad); font-style: normal; }
+
+  /* ============================================
+     МОБИЛЬНАЯ ВЕРСИЯ: таблица превращается в карточки
+     ============================================ */
+  @media (max-width: 640px) {
+    body { padding: 16px 12px 40px; }
+    h1 { font-size: 20px; }
+    .card { padding: 14px; border-radius: 10px; }
+
+    /* поля периода — в столбик */
+    .period-row { gap: 12px; }
+    .field { flex: 1 1 100% !important; }
+
+    /* сводка — 2 колонки */
+    .summary { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat { padding: 10px; }
+    .stat .value { font-size: 17px; }
+
+    /* Кнопки действий — крупнее для пальца */
+    .actions button { padding: 11px 16px; }
+    .icon-btn { width: 38px; height: 38px; }
+
+    /* ---- Превращаем таблицу в карточки ---- */
+    table, thead, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; } /* прячем заголовки */
+
+    tbody tr {
+      position: relative;
+      background: #fafbff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 12px;
+    }
+    tbody tr:hover { background: #fafbff; } /* отключаем hover-подсветку на тач */
+
+    tbody td {
+      padding: 0;
+      border: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    /* подпись поля через data-label */
+    tbody td::before {
+      content: attr(data-label);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+
+    /* Название статьи — на всю ширину */
+    tbody td:nth-child(1) { grid-column: 1 / -1; }
+    /* Баланс — на всю ширину */
+    tbody td:nth-child(4) { grid-column: 1 / -1; text-align: left !important; }
+    tbody td:nth-child(4)::before { content: "Баланс"; }
+
+    /* Кнопка удаления в правом верхнем углу карточки */
+    tbody td:nth-child(5) {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: auto;
+    }
+    tbody td:nth-child(5)::before { content: none; }
+
+    /* Убираем min-width у number-инпутов */
+    td input[type="number"] { min-width: 0; }
+    td input[type="text"] { padding-right: 44px; } /* место под кнопку удаления */
+
+    /* Баланс выравниваем влево в карточке */
+    tbody td.num { text-align: left; }
+  }
 </style>
 </head>
 <body>
@@ -180,15 +255,20 @@ function renderTable() {
   tbody.innerHTML = "";
   state.rows.forEach((row, idx) => {
     const tr = document.createElement("tr");
-    
+
+    // --- Ячейка 1: Название статьи ---
     const tdName = document.createElement("td");
+    tdName.dataset.label = "Статья";              // <-- ДОБАВЛЕНО
     const nameInput = document.createElement("input");
     nameInput.type = "text"; nameInput.value = row.name;
     nameInput.placeholder = "Название...";
     nameInput.addEventListener("input", e => { state.rows[idx].name = e.target.value; saveToCloud(); });
     tdName.appendChild(nameInput);
 
-    const tdPlan = document.createElement("td"); tdPlan.className = "num";
+    // --- Ячейка 2: План ---
+    const tdPlan = document.createElement("td");
+    tdPlan.className = "num";
+    tdPlan.dataset.label = "План";                // <-- ДОБАВЛЕНО
     const planInput = document.createElement("input");
     planInput.type = "number"; planInput.step = "0.01"; planInput.value = row.plan ?? "";
     planInput.addEventListener("input", e => {
@@ -197,7 +277,10 @@ function renderTable() {
     });
     tdPlan.appendChild(planInput);
 
-    const tdFact = document.createElement("td"); tdFact.className = "num";
+    // --- Ячейка 3: Факт ---
+    const tdFact = document.createElement("td");
+    tdFact.className = "num";
+    tdFact.dataset.label = "Факт";                // <-- ДОБАВЛЕНО
     const factInput = document.createElement("input");
     factInput.type = "number"; factInput.step = "0.01"; factInput.value = row.fact ?? "";
     factInput.addEventListener("input", e => {
@@ -206,28 +289,32 @@ function renderTable() {
     });
     tdFact.appendChild(factInput);
 
+    // --- Ячейка 4: Баланс ---
     const tdBalance = document.createElement("td");
-    tdBalance.className = "num"; tdBalance.id = "balance-" + idx;
+    tdBalance.className = "num";
+    tdBalance.id = "balance-" + idx;
+    tdBalance.dataset.label = "Баланс";           // <-- ДОБАВЛЕНО (хотя в CSS подпись задана через ::before content, для чистоты)
 
-    // Новая ячейка с кнопкой удаления (-)
+    // --- Ячейка 5: Кнопка удаления ---
     const tdDelete = document.createElement("td");
+    // у этой ячейки data-label не нужен — на мобильном она станет кнопкой в углу
     const delBtn = document.createElement("button");
     delBtn.className = "icon-btn remove";
-    delBtn.textContent = "−"; // Знак минус
+    delBtn.textContent = "−";
     delBtn.title = "Удалить эту статью";
     delBtn.addEventListener("click", async () => {
-      state.rows.splice(idx, 1); // Удаляем строку из массива
-      await saveToCloud();       // Сохраняем
-      renderTable();             // Перерисовываем
+      state.rows.splice(idx, 1);
+      await saveToCloud();
+      renderTable();
     });
     tdDelete.appendChild(delBtn);
 
-    tr.appendChild(tdName); 
-    tr.appendChild(tdPlan); 
-    tr.appendChild(tdFact); 
+    tr.appendChild(tdName);
+    tr.appendChild(tdPlan);
+    tr.appendChild(tdFact);
     tr.appendChild(tdBalance);
-    tr.appendChild(tdDelete); // Добавляем кнопку в конец строки
-    
+    tr.appendChild(tdDelete);
+
     tbody.appendChild(tr);
     updateRowBalance(idx);
   });
