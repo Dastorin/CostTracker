@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Планировщик трат</title>
+<!-- Стили оставляем без изменений (они у вас уже есть, я скопировал их сюда для полноты) -->
+<style>
+  :root { --bg: #f4f6f9; --card: #ffffff; --border: #d9dee7; --text: #1f2937; --muted: #6b7280; --accent: #2563eb; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --head: #eef2ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px 16px 48px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
+  .wrap { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
+  .period-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+  input[type="text"], input[type="number"] { font: inherit; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); width: 100%; }
+  input:focus { outline: 2px solid rgba(37, 99, 235, .35); border-color: var(--accent); }
+  input[type="number"] { text-align: right; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
+  .stat { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #fafbff; }
+  .stat .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .stat .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .value.neg { color: var(--bad); }
+  .stat .value.pos { color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead th { text-align: left; padding: 10px 8px; background: var(--head); border-bottom: 2px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #374151; white-space: nowrap; }
+  thead th.num, tbody td.num { text-align: right; }
+  tbody td { padding: 8px; border-bottom: 1px solid #eef1f6; vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: #f8faff; }
+  td input[type="number"] { padding: 6px 8px; min-width: 90px; }
+  .status { font-size: 13px; color: var(--muted); font-style: italic; }
+  .balance-pos { color: var(--ok); font-weight: 600; }
+  .balance-neg { color: var(--bad); font-weight: 600; }
+  .balance-zero { color: var(--muted); font-weight: 600; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  button { font: inherit; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text); cursor: pointer; }
+  button:hover { background: #f3f6ff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { color: var(--bad); border-color: #f3c4c4; }
+  button.danger:hover { background: #fff5f5; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  @media (max-width: 640px) { thead th:nth-child(1), tbody td:nth-child(1) { min-width: 150px; } }
+  #syncStatus { margin-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
+  #syncStatus.error { color: var(--bad); font-style: normal; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Планировщик трат</h1>
+  <div class="subtitle">План и факт по статьям, автоматический баланс и остаток</div>
+  <div id="syncStatus">Синхронизация с облаком...</div>
+
+  <div class="card">
+    <div class="period-row">
+      <div class="field" style="flex:1 1 220px;">
+        <label for="period">Период</label>
+        <input type="text" id="period" value="23.11 - 05.12">
+      </div>
+      <div class="field" style="flex:0 1 220px;">
+        <label for="startBalance">Остаток на начало</label>
+        <input type="number" id="startBalance" value="99000" step="0.01">
+      </div>
+    </div>
+    <div class="summary">
+      <div class="stat"><div class="label">Остаток (план)</div><div class="value" id="planRemainder">—</div></div>
+      <div class="stat"><div class="label">Остаток (факт)</div><div class="value" id="factRemainder">—</div></div>
+      <div class="stat"><div class="label">План всего</div><div class="value" id="planTotal">—</div></div>
+      <div class="stat"><div class="label">Факт всего</div><div class="value" id="factTotal">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead><tr><th>Статья расхода</th><th class="num">План</th><th class="num">Факт</th><th class="num">Баланс</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="actions">
+      <button class="primary" id="addRow">+ Добавить статью</button>
+      <button id="resetFacts">Очистить факт</button>
+      <button class="danger" id="resetAll">Сбросить всё</button>
+    </div>
+    <div class="hint">Баланс = План − Факт. Если факт не заполнен, показывается «операции по статье еще не было».</div>
+  </div>
+</div>
+
+<!-- Подключаем Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// --- ВСТАВЬТЕ СЮДА ВАШ firebaseConfig ИЗ ШАГА 2 ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBfTM9Nd9suNxAFa7a0nOjxrS4_YxwkEFw",
+  authDomain: "cost-tracker-4f08a.firebaseapp.com",
+  projectId: "cost-tracker-4f08a",
+  storageBucket: "cost-tracker-4f08a.firebasestorage.app",
+  messagingSenderId: "226142223855",
+  appId: "1:226142223855:web:c0c2531127546c701b8a1a",
+  measurementId: "G-2LTGDK4F7V"
+};
+// ---------------------------------------------------
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const docRef = doc(db, "planner", "main"); // Документ, где будут храниться все данные
+
+const defaultRows = [
+  { name: "Инет на даче", plan: 5500, fact: null },
+  { name: "долг", plan: 10000, fact: null },
+  { name: "квартплата", plan: 15000, fact: null },
+  { name: "налог", plan: 5500, fact: null },
+  { name: "подарок", plan: 5000, fact: 5500 },
+  { name: "продукты (10к в неделю)", plan: 20000, fact: null },
+  { name: "бензин", plan: 4000, fact: 1200 }
+];
+
+let state = {
+  period: "23.11 - 05.12",
+  startBalance: 99000,
+  rows: defaultRows.map(r => ({ ...r }))
+};
+
+const $ = sel => document.querySelector(sel);
+const tbody = $("#tbody");
+const syncStatusEl = $("#syncStatus");
+
+function fmt(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
+}
+function numOrNull(v) {
+  if (v === "" || v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Функция сохранения в облако
+async function saveToCloud() {
+  try {
+    syncStatusEl.textContent = "Сохранение...";
+    syncStatusEl.classList.remove("error");
+    await setDoc(docRef, state);
+    syncStatusEl.textContent = "Все изменения сохранены";
+  } catch (e) {
+    console.error("Ошибка сохранения:", e);
+    syncStatusEl.textContent = "Ошибка сохранения (проверьте подключение к интернету)";
+    syncStatusEl.classList.add("error");
+  }
+}
+
+function renderSummary() {
+  let planSum = 0, factSum = 0;
+  state.rows.forEach(r => {
+    if (r.plan !== null) planSum += r.plan;
+    if (r.fact !== null) factSum += r.fact;
+  });
+  setValueWithClass($("#planRemainder"), state.startBalance - planSum);
+  setValueWithClass($("#factRemainder"), state.startBalance - factSum);
+  $("#planTotal").textContent = fmt(planSum);
+  $("#factTotal").textContent = fmt(factSum);
+}
+function setValueWithClass(el, value) {
+  el.textContent = fmt(value);
+  el.classList.remove("pos", "neg");
+  if (value < 0) el.classList.add("neg");
+  else if (value > 0) el.classList.add("pos");
+}
+
+function renderTable() {
+  tbody.innerHTML = "";
+  state.rows.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+    
+    const tdName = document.createElement("td");
+    const nameInput = document.createElement("input");
+    nameInput.type = "text"; nameInput.value = row.name;
+    nameInput.addEventListener("input", e => { state.rows[idx].name = e.target.value; saveToCloud(); });
+    tdName.appendChild(nameInput);
+
+    const tdPlan = document.createElement("td"); tdPlan.className = "num";
+    const planInput = document.createElement("input");
+    planInput.type = "number"; planInput.step = "0.01"; planInput.value = row.plan ?? "";
+    planInput.addEventListener("input", e => {
+      state.rows[idx].plan = numOrNull(e.target.value);
+      saveToCloud(); updateRowBalance(idx); renderSummary();
+    });
+    tdPlan.appendChild(planInput);
+
+    const tdFact = document.createElement("td"); tdFact.className = "num";
+    const factInput = document.createElement("input");
+    factInput.type = "number"; factInput.step = "0.01"; factInput.value = row.fact ?? "";
+    factInput.addEventListener("input", e => {
+      state.rows[idx].fact = numOrNull(e.target.value);
+      saveToCloud(); updateRowBalance(idx); renderSummary();
+    });
+    tdFact.appendChild(factInput);
+
+    const tdBalance = document.createElement("td");
+    tdBalance.className = "num"; tdBalance.id = "balance-" + idx;
+
+    tr.appendChild(tdName); tr.appendChild(tdPlan); tr.appendChild(tdFact); tr.appendChild(tdBalance);
+    tbody.appendChild(tr);
+    updateRowBalance(idx);
+  });
+  renderSummary();
+}
+
+function updateRowBalance(idx) {
+  const row = state.rows[idx];
+  const cell = document.getElementById("balance-" + idx);
+  if (!cell) return;
+  cell.className = "num";
+  if (row.fact === null) {
+    cell.innerHTML = '<span class="status">операции по статье еще не было</span>';
+    return;
+  }
+  const balance = (row.plan ?? 0) - row.fact;
+  cell.textContent = fmt(balance);
+  cell.classList.remove("balance-pos", "balance-neg", "balance-zero");
+  if (balance > 0) cell.classList.add("balance-pos");
+  else if (balance < 0) cell.classList.add("balance-neg");
+  else cell.classList.add("balance-zero");
+}
+
+function bindHeaderFields() {
+  $("#period").addEventListener("input", e => { state.period = e.target.value; saveToCloud(); });
+  $("#startBalance").addEventListener("input", e => {
+    const v = Number(e.target.value);
+    state.startBalance = Number.isFinite(v) ? v : 0;
+    saveToCloud(); renderSummary();
+  });
+}
+
+async function init() {
+  try {
+    // Загружаем данные из облака при старте
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      state = docSnap.data();
+      syncStatusEl.textContent = "Данные загружены из облака";
+    } else {
+      // Если данных нет, сохраняем дефолтные
+      await saveToCloud(); 
+    }
+  } catch (e) {
+    console.error("Ошибка загрузки:", e);
+    syncStatusEl.textContent = "Не удалось загрузить данные из облака. Работа в локальном режиме.";
+    syncStatusEl.classList.add("error");
+  }
+
+  $("#period").value = state.period;
+  $("#startBalance").value = state.startBalance;
+  bindHeaderFields();
+  renderTable();
+
+  $("#addRow").addEventListener("click", async () => {
+    state.rows.push({ name: "", plan: null, fact: null });
+    await saveToCloud(); renderTable();
+    const inputs = tbody.querySelectorAll('tr:last-child input[type="text"]');
+    if (inputs.length) inputs[0].focus();
+  });
+  $("#resetFacts").addEventListener("click", async () => {
+    if (!confirm("Очистить все значения факта?")) return;
+    state.rows.forEach(r => { r.fact = null; });
+    await saveToCloud(); renderTable();
+  });
+  $("#resetAll").addEventListener("click", async () => {
+    if (!confirm("Сбросить все данные к исходным?")) return;
+    state = { period: "23.11 - 05.12", startBalance: 99000, rows: defaultRows.map(r => ({ ...r })) };
+    $("#period").value = state.period; $("#startBalance").value = state.startBalance;
+    await saveToCloud(); renderTable();
+  });
+}
+
+init();
+</script>
+</body>
+</html>
