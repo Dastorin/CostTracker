@@ -49,3 +49,11 @@ onAuthStateChanged(auth, async (user) => {
     bootstrapped = false;
   }
 });
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch((err) => {
+      console.error('Ошибка регистрации Service Worker:', err);
+    });
+  });
+}
