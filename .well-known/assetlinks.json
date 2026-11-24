@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "io.github.dastorin.twa",
+        "sha256_cert_fingerprints": ["F5:EC:B6:56:CE:8F:28:23:D8:F5:B9:23:16:75:95:94:E3:46:80:17:8D:46:2D:59:6C:D5:D2:E2:CE:3E:E1:4B"]
+      }
+    }]
