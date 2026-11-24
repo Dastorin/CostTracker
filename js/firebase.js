@@ -3,12 +3,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "ВАШ_API_KEY",
-  authDomain: "ВАШ_ПРОЕКТ.firebaseapp.com",
-  projectId: "ВАШ_ПРОЕКТ_ID",
-  storageBucket: "ВАШ_ПРОЕКТ.appspot.com",
-  messagingSenderId: "ВАШ_SENDER_ID",
-  appId: "ВАШ_APP_ID"
+  apiKey: "AIzaSyBfTM9Nd9suNxAFa7a0nOjxrS4_YxwkEFw",
+  authDomain: "cost-tracker-4f08a.firebaseapp.com",
+  projectId: "cost-tracker-4f08a",
+  storageBucket: "cost-tracker-4f08a.firebasestorage.app",
+  messagingSenderId: "226142223855",
+  appId: "1:226142223855:web:c0c2531127546c701b8a1a",
+  measurementId: "G-2LTGDK4F7V"
 };
 
 const app = initializeApp(firebaseConfig);
