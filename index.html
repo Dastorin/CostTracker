@@ -1,400 +1,84 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Планировщик трат</title>
-<style>
-  :root { --bg: #f4f6f9; --card: #ffffff; --border: #d9dee7; --text: #1f2937; --muted: #6b7280; --accent: #2563eb; --ok: #16a34a; --warn: #d97706; --bad: #dc2626; --head: #eef2ff; }
-  * { box-sizing: border-box; }
-  body { margin: 0; padding: 24px 16px 48px; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-text-size-adjust: 100%; }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  h1 { font-size: 22px; margin: 0 0 4px; }
-  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 18px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
-  .period-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
-  .field { display: flex; flex-direction: column; gap: 6px; }
-  .field label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-  input[type="text"], input[type="number"] { font: inherit; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); width: 100%; }
-  input:focus { outline: 2px solid rgba(37, 99, 235, .35); border-color: var(--accent); }
-  input[type="number"] { text-align: right; }
-  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 16px; }
-  .stat { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; background: #fafbff; }
-  .stat .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .stat .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .stat .value.neg { color: var(--bad); }
-  .stat .value.pos { color: var(--ok); }
-
-  table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  thead th { text-align: left; padding: 10px 8px; background: var(--head); border-bottom: 2px solid var(--border); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #374151; white-space: nowrap; }
-  thead th.num, tbody td.num { text-align: right; }
-  tbody td { padding: 8px; border-bottom: 1px solid #eef1f6; vertical-align: middle; }
-  tbody tr:last-child td { border-bottom: none; }
-  tbody tr:hover { background: #f8faff; }
-  td input[type="number"] { padding: 6px 8px; min-width: 90px; }
-
-  .status { font-size: 13px; color: var(--muted); font-style: italic; }
-  .balance-pos { color: var(--ok); font-weight: 600; }
-  .balance-neg { color: var(--bad); font-weight: 600; }
-  .balance-zero { color: var(--muted); font-weight: 600; }
-
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
-  button { font: inherit; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--border); background: #fff; color: var(--text); cursor: pointer; transition: all 0.2s; }
-  button:hover { background: #f3f6ff; }
-
-  .icon-btn { width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; border-radius: 50%; }
-  .icon-btn.add { color: var(--ok); border-color: #cce5d1; background: #f0fdf4; margin-right: 10px; }
-  .icon-btn.add:hover { background: #dcfce7; border-color: var(--ok); }
-  .icon-btn.remove { color: var(--bad); border-color: #f3c4c4; background: #fef2f2; }
-  .icon-btn.remove:hover { background: #fee2e2; border-color: var(--bad); }
-
-  button.danger { color: var(--bad); border-color: #f3c4c4; }
-  button.danger:hover { background: #fff5f5; }
-  .hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-  #syncStatus { margin-top: 10px; font-size: 13px; color: var(--muted); font-style: italic; }
-  #syncStatus.error { color: var(--bad); font-style: normal; }
-
-  /* ============================================
-     МОБИЛЬНАЯ ВЕРСИЯ: таблица превращается в карточки
-     ============================================ */
-  @media (max-width: 640px) {
-    body { padding: 16px 12px 40px; }
-    h1 { font-size: 20px; }
-    .card { padding: 14px; border-radius: 10px; }
-
-    /* поля периода — в столбик */
-    .period-row { gap: 12px; }
-    .field { flex: 1 1 100% !important; }
-
-    /* сводка — 2 колонки */
-    .summary { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    .stat { padding: 10px; }
-    .stat .value { font-size: 17px; }
-
-    /* Кнопки действий — крупнее для пальца */
-    .actions button { padding: 11px 16px; }
-    .icon-btn { width: 38px; height: 38px; }
-
-    /* ---- Превращаем таблицу в карточки ---- */
-    table, thead, tbody, tr, td { display: block; width: 100%; }
-    thead { display: none; } /* прячем заголовки */
-
-    tbody tr {
-      position: relative;
-      background: #fafbff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px;
-      margin-bottom: 12px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 12px;
-    }
-    tbody tr:hover { background: #fafbff; } /* отключаем hover-подсветку на тач */
-
-    tbody td {
-      padding: 0;
-      border: none;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    /* подпись поля через data-label */
-    tbody td::before {
-      content: attr(data-label);
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-
-    /* Название статьи — на всю ширину */
-    tbody td:nth-child(1) { grid-column: 1 / -1; }
-    /* Баланс — на всю ширину */
-    tbody td:nth-child(4) { grid-column: 1 / -1; text-align: left !important; }
-    tbody td:nth-child(4)::before { content: "Баланс"; }
-
-    /* Кнопка удаления в правом верхнем углу карточки */
-    tbody td:nth-child(5) {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: auto;
-    }
-    tbody td:nth-child(5)::before { content: none; }
-
-    /* Убираем min-width у number-инпутов */
-    td input[type="number"] { min-width: 0; }
-    td input[type="text"] { padding-right: 44px; } /* место под кнопку удаления */
-
-    /* Баланс выравниваем влево в карточке */
-    tbody td.num { text-align: left; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Планировщик трат</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<div class="wrap">
-  <h1>Планировщик трат</h1>
-  <div class="subtitle">План и факт по статьям, автоматический баланс и остаток</div>
-  <div id="syncStatus">Синхронизация с облаком...</div>
 
-  <div class="card">
-    <div class="period-row">
-      <div class="field" style="flex:1 1 220px;">
-        <label for="period">Период</label>
-        <input type="text" id="period" value="23.11 - 05.12">
+  <!-- Форма входа -->
+  <div id="loginBox" class="card login-card">
+    <h2>Вход</h2>
+    <div class="field">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" placeholder="you@example.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="loginPassword">Пароль</label>
+      <input type="password" id="loginPassword" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <button id="loginBtn" class="btn-primary">Войти</button>
+    <div id="loginError" class="error-text"></div>
+  </div>
+
+  <!-- Основной интерфейс -->
+  <div id="appBox" class="wrap" hidden>
+    <header class="app-header">
+      <div>
+        <h1>Планировщик трат</h1>
+        <div class="subtitle">План и факт по статьям, автоматический баланс и остаток</div>
       </div>
-      <div class="field" style="flex:0 1 220px;">
-        <label for="startBalance">Остаток на начало</label>
-        <input type="number" id="startBalance" value="99000" step="0.01">
+      <button id="logoutBtn" class="btn-ghost">Выйти</button>
+    </header>
+
+    <div id="syncStatus" class="sync-status">Синхронизация с облаком...</div>
+
+    <div class="card">
+      <div class="period-row">
+        <div class="field field-grow">
+          <label for="period">Период</label>
+          <input type="text" id="period">
+        </div>
+        <div class="field field-start">
+          <label for="startBalance">Остаток на начало</label>
+          <input type="number" id="startBalance" step="0.01">
+        </div>
+      </div>
+
+      <div class="summary">
+        <div class="stat"><div class="label">Остаток (план)</div><div class="value" id="planRemainder">—</div></div>
+        <div class="stat"><div class="label">Остаток (факт)</div><div class="value" id="factRemainder">—</div></div>
+        <div class="stat"><div class="label">План всего</div><div class="value" id="planTotal">—</div></div>
+        <div class="stat"><div class="label">Факт всего</div><div class="value" id="factTotal">—</div></div>
       </div>
     </div>
-    <div class="summary">
-      <div class="stat"><div class="label">Остаток (план)</div><div class="value" id="planRemainder">—</div></div>
-      <div class="stat"><div class="label">Остаток (факт)</div><div class="value" id="factRemainder">—</div></div>
-      <div class="stat"><div class="label">План всего</div><div class="value" id="planTotal">—</div></div>
-      <div class="stat"><div class="label">Факт всего</div><div class="value" id="factTotal">—</div></div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Статья расхода</th>
+            <th class="num">План</th>
+            <th class="num">Факт</th>
+            <th class="num">Баланс</th>
+            <th class="col-del"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+
+      <div class="actions">
+        <button class="icon-btn add" id="addRow" title="Добавить статью">+</button>
+        <button id="resetFacts">Очистить факт</button>
+        <button class="btn-danger" id="resetAll">Удалить все строки</button>
+      </div>
+
+      <p class="hint">Баланс = План − Факт. Если факт не заполнен — показывается «операции по статье ещё не было».</p>
     </div>
   </div>
 
-  <div class="card">
-    <table>
-      <thead>
-        <tr>
-          <th>Статья расхода</th>
-          <th class="num">План</th>
-          <th class="num">Факт</th>
-          <th class="num">Баланс</th>
-          <th style="width: 50px;"></th> <!-- Колонка для кнопки удаления -->
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    <div class="actions">
-      <button class="icon-btn add" id="addRow" title="Добавить статью">+</button>
-      <button id="resetFacts">Очистить факт</button>
-      <button class="danger" id="resetAll">Удалить все строки</button>
-    </div>
-    <div class="hint">Баланс = План − Факт. Если факт не заполнен, показывается «операции по статье еще не было».</div>
-  </div>
-</div>
-
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-// --- ВСТАВЬТЕ СЮДА ВАШ firebaseConfig ИЗ ШАГА 2 ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBfTM9Nd9suNxAFa7a0nOjxrS4_YxwkEFw",
-  authDomain: "cost-tracker-4f08a.firebaseapp.com",
-  projectId: "cost-tracker-4f08a",
-  storageBucket: "cost-tracker-4f08a.firebasestorage.app",
-  messagingSenderId: "226142223855",
-  appId: "1:226142223855:web:c0c2531127546c701b8a1a",
-  measurementId: "G-2LTGDK4F7V"
-};
-// ---------------------------------------------------
-
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const docRef = doc(db, "planner", "main");
-
-// Теперь по умолчанию пустой массив, так как кнопка "Сбросить" должна всё удалять
-let state = {
-  period: "23.11 - 05.12",
-  startBalance: 99000,
-  rows: [] 
-};
-
-const $ = sel => document.querySelector(sel);
-const tbody = $("#tbody");
-const syncStatusEl = $("#syncStatus");
-
-function fmt(n) {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return n.toLocaleString("ru-RU", { maximumFractionDigits: 2 });
-}
-function numOrNull(v) {
-  if (v === "" || v === null || v === undefined) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : null;
-}
-
-async function saveToCloud() {
-  try {
-    syncStatusEl.textContent = "Сохранение...";
-    syncStatusEl.classList.remove("error");
-    await setDoc(docRef, state);
-    syncStatusEl.textContent = "Все изменения сохранены";
-  } catch (e) {
-    console.error("Ошибка сохранения:", e);
-    syncStatusEl.textContent = "Ошибка сохранения (проверьте подключение)";
-    syncStatusEl.classList.add("error");
-  }
-}
-
-function renderSummary() {
-  let planSum = 0, factSum = 0;
-  state.rows.forEach(r => {
-    if (r.plan !== null) planSum += r.plan;
-    if (r.fact !== null) factSum += r.fact;
-  });
-  setValueWithClass($("#planRemainder"), state.startBalance - planSum);
-  setValueWithClass($("#factRemainder"), state.startBalance - factSum);
-  $("#planTotal").textContent = fmt(planSum);
-  $("#factTotal").textContent = fmt(factSum);
-}
-function setValueWithClass(el, value) {
-  el.textContent = fmt(value);
-  el.classList.remove("pos", "neg");
-  if (value < 0) el.classList.add("neg");
-  else if (value > 0) el.classList.add("pos");
-}
-
-function renderTable() {
-  tbody.innerHTML = "";
-  state.rows.forEach((row, idx) => {
-    const tr = document.createElement("tr");
-
-    // --- Ячейка 1: Название статьи ---
-    const tdName = document.createElement("td");
-    tdName.dataset.label = "Статья";              // <-- ДОБАВЛЕНО
-    const nameInput = document.createElement("input");
-    nameInput.type = "text"; nameInput.value = row.name;
-    nameInput.placeholder = "Название...";
-    nameInput.addEventListener("input", e => { state.rows[idx].name = e.target.value; saveToCloud(); });
-    tdName.appendChild(nameInput);
-
-    // --- Ячейка 2: План ---
-    const tdPlan = document.createElement("td");
-    tdPlan.className = "num";
-    tdPlan.dataset.label = "План";                // <-- ДОБАВЛЕНО
-    const planInput = document.createElement("input");
-    planInput.type = "number"; planInput.step = "0.01"; planInput.value = row.plan ?? "";
-    planInput.addEventListener("input", e => {
-      state.rows[idx].plan = numOrNull(e.target.value);
-      saveToCloud(); updateRowBalance(idx); renderSummary();
-    });
-    tdPlan.appendChild(planInput);
-
-    // --- Ячейка 3: Факт ---
-    const tdFact = document.createElement("td");
-    tdFact.className = "num";
-    tdFact.dataset.label = "Факт";                // <-- ДОБАВЛЕНО
-    const factInput = document.createElement("input");
-    factInput.type = "number"; factInput.step = "0.01"; factInput.value = row.fact ?? "";
-    factInput.addEventListener("input", e => {
-      state.rows[idx].fact = numOrNull(e.target.value);
-      saveToCloud(); updateRowBalance(idx); renderSummary();
-    });
-    tdFact.appendChild(factInput);
-
-    // --- Ячейка 4: Баланс ---
-    const tdBalance = document.createElement("td");
-    tdBalance.className = "num";
-    tdBalance.id = "balance-" + idx;
-    tdBalance.dataset.label = "Баланс";           // <-- ДОБАВЛЕНО (хотя в CSS подпись задана через ::before content, для чистоты)
-
-    // --- Ячейка 5: Кнопка удаления ---
-    const tdDelete = document.createElement("td");
-    // у этой ячейки data-label не нужен — на мобильном она станет кнопкой в углу
-    const delBtn = document.createElement("button");
-    delBtn.className = "icon-btn remove";
-    delBtn.textContent = "−";
-    delBtn.title = "Удалить эту статью";
-    delBtn.addEventListener("click", async () => {
-      state.rows.splice(idx, 1);
-      await saveToCloud();
-      renderTable();
-    });
-    tdDelete.appendChild(delBtn);
-
-    tr.appendChild(tdName);
-    tr.appendChild(tdPlan);
-    tr.appendChild(tdFact);
-    tr.appendChild(tdBalance);
-    tr.appendChild(tdDelete);
-
-    tbody.appendChild(tr);
-    updateRowBalance(idx);
-  });
-  renderSummary();
-}
-
-function updateRowBalance(idx) {
-  const row = state.rows[idx];
-  const cell = document.getElementById("balance-" + idx);
-  if (!cell) return;
-  cell.className = "num";
-  if (row.fact === null) {
-    cell.innerHTML = '<span class="status">операции по статье еще не было</span>';
-    return;
-  }
-  const balance = (row.plan ?? 0) - row.fact;
-  cell.textContent = fmt(balance);
-  cell.classList.remove("balance-pos", "balance-neg", "balance-zero");
-  if (balance > 0) cell.classList.add("balance-pos");
-  else if (balance < 0) cell.classList.add("balance-neg");
-  else cell.classList.add("balance-zero");
-}
-
-function bindHeaderFields() {
-  $("#period").addEventListener("input", e => { state.period = e.target.value; saveToCloud(); });
-  $("#startBalance").addEventListener("input", e => {
-    const v = Number(e.target.value);
-    state.startBalance = Number.isFinite(v) ? v : 0;
-    saveToCloud(); renderSummary();
-  });
-}
-
-async function init() {
-  try {
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      state = docSnap.data();
-      syncStatusEl.textContent = "Данные загружены из облака";
-    } else {
-      await saveToCloud(); 
-    }
-  } catch (e) {
-    console.error("Ошибка загрузки:", e);
-    syncStatusEl.textContent = "Не удалось загрузить данные из облака.";
-    syncStatusEl.classList.add("error");
-  }
-
-  $("#period").value = state.period;
-  $("#startBalance").value = state.startBalance;
-  bindHeaderFields();
-  renderTable();
-
-  // Обработчик кнопки +
-  $("#addRow").addEventListener("click", async () => {
-    state.rows.push({ name: "", plan: null, fact: null });
-    await saveToCloud(); renderTable();
-    const inputs = tbody.querySelectorAll('tr:last-child input[type="text"]');
-    if (inputs.length) inputs[0].focus();
-  });
-
-  // Обработчик очистки факта
-  $("#resetFacts").addEventListener("click", async () => {
-    if (!confirm("Очистить все значения факта?")) return;
-    state.rows.forEach(r => { r.fact = null; });
-    await saveToCloud(); renderTable();
-  });
-
-  // ОБНОВЛЕННЫЙ обработчик кнопки "Удалить все строки"
-  $("#resetAll").addEventListener("click", async () => {
-    if (!confirm("Вы уверены, что хотите УДАЛИТЬ ВСЕ СТРОКИ? Это действие нельзя отменить.")) return;
-    state.rows = []; // Полностью очищаем массив строк
-    // Если хотите сбрасывать и остаток, раскомментируйте строки ниже:
-    // state.startBalance = 0;
-    // $("#startBalance").value = 0;
-    await saveToCloud(); 
-    renderTable();
-  });
-}
-
-init();
-</script>
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>
